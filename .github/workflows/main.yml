@@ -8,6 +8,11 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+- name: Clean Workspace
+  run: |
+    rm -rf kernel
+    rm -rf clang
+    rm -rf AnyKernel3
 
       # ==========================
       # FREE DISK SPACE
@@ -75,9 +80,10 @@ jobs:
       # ==========================
       # BUILD KERNEL (OFFICIAL GKI METHOD)
       # ==========================
-      - name: Setup Clang (Working Version)
-        run: |
-          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
+      - name: Setup Clang (Proton)
+  run: |
+    rm -rf clang
+    git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
 
       - name: Build Kernel (Stable Method)
         run: |
