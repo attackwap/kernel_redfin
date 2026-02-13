@@ -1,4 +1,4 @@
-name: Pixel5 A14 KernelSU Stable (Google Clang)
+name: Pixel5 A14 KernelSU UltraStable
 
 on:
   workflow_dispatch:
@@ -9,9 +9,9 @@ jobs:
 
     steps:
 
-      # =============================
-      # FREE DISK SPACE
-      # =============================
+      # ==========================
+      # CLEAN DISK (WAJIB)
+      # ==========================
       - name: Free Disk Space
         run: |
           df -h
@@ -22,38 +22,38 @@ jobs:
           sudo apt clean
           df -h
 
-      # =============================
+      # ==========================
       # INSTALL DEPENDENCIES
-      # =============================
+      # ==========================
       - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y \
             bc bison build-essential curl flex \
             git libncurses5-dev libssl-dev \
-            libelf-dev zip python3 wget
+            libelf-dev zip python3 wget xz-utils
 
-      # =============================
-      # CLONE KERNEL SOURCE (A14)
-      # =============================
-      - name: Clone Pixel 5 Kernel
+      # ==========================
+      # CLONE KERNEL SOURCE
+      # ==========================
+      - name: Clone Pixel 5 Kernel (Android 14)
         run: |
           git clone --depth=1 \
             -b android-msm-redbull-4.19-android14 \
             https://android.googlesource.com/kernel/msm \
             kernel
 
-      # =============================
+      # ==========================
       # INJECT KERNELSU
-      # =============================
+      # ==========================
       - name: Inject KernelSU
         run: |
           cd kernel
           curl -LSs https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh | bash -
 
-      # =============================
-      # SAFE CONFIG (ANTI PANIC)
-      # =============================
+      # ==========================
+      # SAFE CONFIG (ANTI ERROR)
+      # ==========================
       - name: Configure Kernel
         run: |
           cd kernel
@@ -62,21 +62,21 @@ jobs:
           echo "CONFIG_KSU_SUSFS_SPOOF=y" >> arch/arm64/configs/redbull_defconfig
           echo "CONFIG_LTO_NONE=y" >> arch/arm64/configs/redbull_defconfig
           echo "CONFIG_DEBUG_INFO=n" >> arch/arm64/configs/redbull_defconfig
+          echo "CONFIG_KALLSYMS=n" >> arch/arm64/configs/redbull_defconfig
 
-      # =============================
-      # DOWNLOAD GOOGLE CLANG (r450784d)
-      # =============================
-      - name: Download Google Clang 17
+      # ==========================
+      # DOWNLOAD GOOGLE CLANG (WORKING LINK)
+      # ==========================
+      - name: Download Google Clang r450784e
         run: |
-          mkdir clang
-          cd clang
-          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r450784d.tar.gz -O clang.tar.gz
-          tar -xf clang.tar.gz
-          rm clang.tar.gz
+          wget https://storage.googleapis.com/android-build/clang-r450784e-linux-x86.tar.xz
+          tar -xf clang-r450784e-linux-x86.tar.xz
+          mv clang-r450784e clang
+          rm clang-r450784e-linux-x86.tar.xz
 
-      # =============================
-      # BUILD KERNEL (LLVM MODE)
-      # =============================
+      # ==========================
+      # BUILD KERNEL
+      # ==========================
       - name: Build Kernel
         run: |
           export ARCH=arm64
@@ -92,21 +92,21 @@ jobs:
             LLVM=1 \
             LLVM_IAS=1
 
-      # =============================
+      # ==========================
       # BUILD ANYKERNEL3 ZIP
-      # =============================
-      - name: Build AnyKernel3
+      # ==========================
+      - name: Build AnyKernel3 ZIP
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git
           cp kernel/out/arch/arm64/boot/Image.lz4-dtb AnyKernel3/
           cd AnyKernel3
-          zip -r9 ../Pixel5-A14-KSU-SUSFS.zip *
+          zip -r9 ../Pixel5-A14-KSU-SUSFS-UltraStable.zip *
 
-      # =============================
+      # ==========================
       # UPLOAD ARTIFACT
-      # =============================
+      # ==========================
       - name: Upload Kernel ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: Pixel5-A14-KSU-SUSFS
-          path: Pixel5-A14-KSU-SUSFS.zip
+          name: Pixel5-A14-KSU-SUSFS-UltraStable
+          path: Pixel5-A14-KSU-SUSFS-UltraStable.zip
