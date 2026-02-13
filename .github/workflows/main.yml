@@ -1,4 +1,4 @@
-name: Pixel5 A14 KernelSU GKI Build
+name: Pixel5 A14 KernelSU Build
 
 on:
   workflow_dispatch:
@@ -8,15 +8,13 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-- name: Clean Workspace
-  run: |
-    rm -rf kernel
-    rm -rf clang
-    rm -rf AnyKernel3
 
-      # ==========================
-      # FREE DISK SPACE
-      # ==========================
+      - name: Clean Workspace
+        run: |
+          rm -rf kernel
+          rm -rf clang
+          rm -rf AnyKernel3
+
       - name: Free Disk Space
         run: |
           df -h
@@ -27,9 +25,6 @@ jobs:
           sudo apt clean
           df -h
 
-      # ==========================
-      # INSTALL DEPENDENCIES
-      # ==========================
       - name: Install dependencies
         run: |
           sudo apt update
@@ -38,27 +33,18 @@ jobs:
             git libncurses5-dev libssl-dev \
             libelf-dev python3 zip
 
-      # ==========================
-      # CLONE KERNEL SOURCE (A14)
-      # ==========================
-      - name: Clone Kernel Source
+      - name: Clone Kernel Source (Redbull A14)
         run: |
           git clone --depth=1 \
             -b android-msm-redbull-4.19-android14 \
             https://android.googlesource.com/kernel/msm \
             kernel
 
-      # ==========================
-      # INJECT KERNELSU
-      # ==========================
       - name: Inject KernelSU
         run: |
           cd kernel
           curl -LSs https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh | bash -
 
-      # ==========================
-      # ENABLE KSU + SUSFS
-      # ==========================
       - name: Enable KSU Config
         run: |
           cd kernel
@@ -68,24 +54,11 @@ jobs:
           echo "CONFIG_LTO_NONE=y" >> arch/arm64/configs/redbull_defconfig
           echo "CONFIG_DEBUG_INFO=n" >> arch/arm64/configs/redbull_defconfig
 
-      # ==========================
-      # CLONE AOSP CLANG
-      # ==========================
-      - name: Clone AOSP Clang
+      - name: Setup Proton Clang
         run: |
-          git clone --depth=1 \
-            https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 \
-            clang
+          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
 
-      # ==========================
-      # BUILD KERNEL (OFFICIAL GKI METHOD)
-      # ==========================
-      - name: Setup Clang (Proton)
-  run: |
-    rm -rf clang
-    git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
-
-      - name: Build Kernel (Stable Method)
+      - name: Build Kernel
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
@@ -94,7 +67,6 @@ jobs:
           export PATH=$(pwd)/clang/bin:$PATH
 
           cd kernel
-
           make O=out redbull_defconfig
 
           make -j$(nproc) O=out \
@@ -106,20 +78,13 @@ jobs:
             OBJDUMP=llvm-objdump \
             STRIP=llvm-strip
 
-
-      # ==========================
-      # PACKAGE RESULT
-      # ==========================
       - name: Package Kernel
         run: |
-          cd kernel/out/android-msm-*
-          zip -r ../../../Pixel5-A14-KSU-GKI.zip *
+          cd kernel/out/arch/arm64/boot
+          zip -r ../../../../../Pixel5-A14-KSU.zip *
 
-      # ==========================
-      # UPLOAD ARTIFACT
-      # ==========================
-      - name: Upload Kernel
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Pixel5-A14-KSU-GKI
-          path: Pixel5-A14-KSU-GKI.zip
+          name: Pixel5-A14-KSU
+          path: Pixel5-A14-KSU.zip
