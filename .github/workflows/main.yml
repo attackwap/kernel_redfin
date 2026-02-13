@@ -1,4 +1,4 @@
-name: Pixel5 A14 KernelSU UltraStable
+name: Pixel5 A14 KernelSU Final AOSP
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ jobs:
     steps:
 
       # ==========================
-      # CLEAN DISK (WAJIB)
+      # FREE DISK SPACE
       # ==========================
       - name: Free Disk Space
         run: |
@@ -31,7 +31,7 @@ jobs:
           sudo apt install -y \
             bc bison build-essential curl flex \
             git libncurses5-dev libssl-dev \
-            libelf-dev zip python3 wget xz-utils
+            libelf-dev zip python3
 
       # ==========================
       # CLONE KERNEL SOURCE
@@ -52,7 +52,7 @@ jobs:
           curl -LSs https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh | bash -
 
       # ==========================
-      # SAFE CONFIG (ANTI ERROR)
+      # SAFE CONFIG
       # ==========================
       - name: Configure Kernel
         run: |
@@ -65,17 +65,16 @@ jobs:
           echo "CONFIG_KALLSYMS=n" >> arch/arm64/configs/redbull_defconfig
 
       # ==========================
-      # DOWNLOAD GOOGLE CLANG (WORKING LINK)
+      # CLONE AOSP OFFICIAL CLANG
       # ==========================
-      - name: Download Google Clang r450784e
+      - name: Clone AOSP Clang
         run: |
-          wget https://storage.googleapis.com/android-build/clang-r450784e-linux-x86.tar.xz
-          tar -xf clang-r450784e-linux-x86.tar.xz
-          mv clang-r450784e clang
-          rm clang-r450784e-linux-x86.tar.xz
+          git clone --depth=1 \
+            https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 \
+            clang
 
       # ==========================
-      # BUILD KERNEL
+      # BUILD KERNEL (AOSP METHOD)
       # ==========================
       - name: Build Kernel
         run: |
@@ -83,7 +82,7 @@ jobs:
           export SUBARCH=arm64
           export KBUILD_BUILD_USER=github
           export KBUILD_BUILD_HOST=actions
-          export PATH=$(pwd)/clang/bin:$PATH
+          export PATH=$(pwd)/clang/clang-r*/bin:$PATH
 
           cd kernel
           make O=out redbull_defconfig
@@ -97,16 +96,4 @@ jobs:
       # ==========================
       - name: Build AnyKernel3 ZIP
         run: |
-          git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git
-          cp kernel/out/arch/arm64/boot/Image.lz4-dtb AnyKernel3/
-          cd AnyKernel3
-          zip -r9 ../Pixel5-A14-KSU-SUSFS-UltraStable.zip *
-
-      # ==========================
-      # UPLOAD ARTIFACT
-      # ==========================
-      - name: Upload Kernel ZIP
-        uses: actions/upload-artifact@v4
-        with:
-          name: Pixel5-A14-KSU-SUSFS-UltraStable
-          path: Pixel5-A14-KSU-SUSFS-UltraStable.zip
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3
