@@ -1,4 +1,4 @@
-name: Pixel 5 A14 Kernel SUSFS Full Auto
+name: Pixel5 A14 Kernel SUSFS (Lite)
 
 on:
   workflow_dispatch:
@@ -8,26 +8,37 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      # ==============================
+      # Cleanup disk (WAJIB)
+      # ==============================
+      - name: Free Disk Space
+        run: |
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache
+          sudo apt clean
+          df -h
 
+      # ==============================
+      # Install dependencies (minimal)
+      # ==============================
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y \
-            bc bison build-essential curl flex g++-multilib gcc-multilib \
-            git gnupg gperf libncurses5-dev libssl-dev libxml2-utils \
-            lzop pngcrush rsync schedtool squashfs-tools xsltproc \
-            zip zlib1g-dev python3 unzip wget
+          sudo apt install -y bc bison build-essential curl flex \
+          git libncurses5-dev libssl-dev zip python3
 
       # ==============================
-      # Clone Kernel Source
+      # Clone Kernel (SHALLOW)
       # ==============================
-      - name: Clone Pixel 5 Kernel (Android 14)
+      - name: Clone Pixel 5 Kernel A14
         run: |
-          git clone https://android.googlesource.com/device/google/redbull-kernel kernel
-          cd kernel
-          git checkout android14
+          git clone --depth=1 \
+            -b android-msm-redbull-4.19-android14 \
+            https://android.googlesource.com/kernel/msm \
+            kernel
 
       # ==============================
       # Inject KernelSU
@@ -38,19 +49,19 @@ jobs:
           curl -LSs https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh | bash -
 
       # ==============================
-      # Clone SUSFS
+      # Clone & Apply SUSFS (4.19)
       # ==============================
       - name: Clone SUSFS
         run: |
-          git clone https://github.com/sidex15/susfs.git
+          git clone --depth=1 https://github.com/sidex15/susfs.git
 
-      - name: Apply SUSFS Patch (4.19)
+      - name: Apply SUSFS Patch
         run: |
           cd kernel
           git apply ../susfs/kernel_patches/4.19/*.patch || true
 
       # ==============================
-      # Clone Proton Clang
+      # Clone Proton Clang (SHALLOW)
       # ==============================
       - name: Clone Proton Clang
         run: |
@@ -72,61 +83,20 @@ jobs:
           make -j$(nproc) O=out CC=clang
 
       # ==============================
-      # Download Factory Image A14
-      # ==============================
-      - name: Download Pixel 5 Android 14 Factory Image
-        run: |
-          wget https://dl.google.com/dl/android/aosp/redfin-android14-factory.zip -O factory.zip
-          unzip factory.zip
-          cd redfin-*
-          unzip image-redfin-*.zip
-
-      # ==============================
-      # Repack boot.img
-      # ==============================
-      - name: Repack boot.img
-        run: |
-          git clone https://github.com/topjohnwu/Magisk.git magisk
-          cd magisk/tools
-          ./magiskboot unpack ../../redfin-*/boot.img
-          cp ../../kernel/out/arch/arm64/boot/Image.lz4-dtb kernel
-          ./magiskboot repack ../../redfin-*/boot.img
-          mv new-boot.img ../../../Pixel5-SUSFS-boot.img
-
-      # ==============================
       # Build AnyKernel3 ZIP
       # ==============================
-      - name: Build AnyKernel3
+      - name: Build AnyKernel3 ZIP
         run: |
-          git clone https://github.com/osm0sis/AnyKernel3.git
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git
           cp kernel/out/arch/arm64/boot/Image.lz4-dtb AnyKernel3/
           cd AnyKernel3
           zip -r9 ../Pixel5-A14-SUSFS-Kernel.zip *
 
       # ==============================
-      # Upload Artifacts
+      # Upload Artifact
       # ==============================
-      - name: Upload boot.img
+      - name: Upload Kernel ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: Pixel5-SUSFS-Boot
-          path: Pixel5-SUSFS-boot.img
-
-      - name: Upload AnyKernel ZIP
-        uses: actions/upload-artifact@v4
-        with:
-          name: Pixel5-SUSFS-AnyKernel
+          name: Pixel5-A14-SUSFS-Kernel
           path: Pixel5-A14-SUSFS-Kernel.zip
-
-      # ==============================
-      # Create GitHub Release
-      # ==============================
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: Pixel5-SUSFS-${{ github.run_number }}
-          files: |
-            Pixel5-SUSFS-boot.img
-            Pixel5-A14-SUSFS-Kernel.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
