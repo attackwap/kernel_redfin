@@ -1,4 +1,4 @@
-name: Pixel5 A14 Kernel SUSFS (Lite)
+name: Pixel5 A14 KernelSU SUSFS Stable
 
 on:
   workflow_dispatch:
@@ -8,9 +8,9 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      # ==============================
-      # Cleanup disk (WAJIB)
-      # ==============================
+      # =============================
+      # CLEAN DISK (WAJIB)
+      # =============================
       - name: Free Disk Space
         run: |
           df -h
@@ -21,55 +21,57 @@ jobs:
           sudo apt clean
           df -h
 
-      # ==============================
-      # Install dependencies (minimal)
-      # ==============================
+      # =============================
+      # Install minimal dependencies
+      # =============================
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y bc bison build-essential curl flex \
-          git libncurses5-dev libssl-dev zip python3
+          sudo apt install -y \
+            bc bison build-essential curl flex \
+            git libncurses5-dev libssl-dev \
+            zip python3
 
-      # ==============================
-      # Clone Kernel (SHALLOW)
-      # ==============================
-      - name: Clone Pixel 5 Kernel A14
+      # =============================
+      # Clone Pixel 5 Kernel (Android 14)
+      # =============================
+      - name: Clone Kernel Source
         run: |
           git clone --depth=1 \
             -b android-msm-redbull-4.19-android14 \
             https://android.googlesource.com/kernel/msm \
             kernel
 
-      # ==============================
-      # Inject KernelSU
-      # ==============================
+      # =============================
+      # Inject KernelSU (official)
+      # =============================
       - name: Inject KernelSU
         run: |
           cd kernel
           curl -LSs https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh | bash -
 
-      # ==============================
-      # Clone & Apply SUSFS (4.19)
-      # ==============================
-      - name: Clone SUSFS
-        run: |
-          git clone --depth=1 https://github.com/sidex15/susfs.git
-
-      - name: Apply SUSFS Patch
+      # =============================
+      # Enable KernelSU + SUSFS + Disable LTO
+      # =============================
+      - name: Enable KSU & Optimize Config
         run: |
           cd kernel
-          git apply ../susfs/kernel_patches/4.19/*.patch || true
+          echo "CONFIG_KSU=y" >> arch/arm64/configs/redbull_defconfig
+          echo "CONFIG_KSU_SUSFS=y" >> arch/arm64/configs/redbull_defconfig
+          echo "CONFIG_KSU_SUSFS_SPOOF=y" >> arch/arm64/configs/redbull_defconfig
+          echo "# Disable LTO for stability" >> arch/arm64/configs/redbull_defconfig
+          echo "CONFIG_LTO_NONE=y" >> arch/arm64/configs/redbull_defconfig
 
-      # ==============================
-      # Clone Proton Clang (SHALLOW)
-      # ==============================
+      # =============================
+      # Clone Proton Clang
+      # =============================
       - name: Clone Proton Clang
         run: |
           git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
 
-      # ==============================
+      # =============================
       # Build Kernel
-      # ==============================
+      # =============================
       - name: Build Kernel
         run: |
           export ARCH=arm64
@@ -82,21 +84,21 @@ jobs:
           make O=out redbull_defconfig
           make -j$(nproc) O=out CC=clang
 
-      # ==============================
+      # =============================
       # Build AnyKernel3 ZIP
-      # ==============================
+      # =============================
       - name: Build AnyKernel3 ZIP
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git
           cp kernel/out/arch/arm64/boot/Image.lz4-dtb AnyKernel3/
           cd AnyKernel3
-          zip -r9 ../Pixel5-A14-SUSFS-Kernel.zip *
+          zip -r9 ../Pixel5-A14-KSU-SUSFS.zip *
 
-      # ==============================
+      # =============================
       # Upload Artifact
-      # ==============================
+      # =============================
       - name: Upload Kernel ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: Pixel5-A14-SUSFS-Kernel
-          path: Pixel5-A14-SUSFS-Kernel.zip
+          name: Pixel5-A14-KSU-SUSFS
+          path: Pixel5-A14-KSU-SUSFS.zip
