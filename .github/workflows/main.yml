@@ -1,12 +1,58 @@
-      - name: Build Kernel (Official Method)
+name: Pixel5 A14 KernelSU GKI Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+
+      # ==========================
+      # FREE DISK SPACE
+      # ==========================
+      - name: Free Disk Space
         run: |
-          export ARCH=arm64
-          export SUBARCH=arm64
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache
+          sudo apt clean
+          df -h
 
-          export PATH=$(pwd)/clang/clang-r*/bin:$PATH
+      # ==========================
+      # INSTALL DEPENDENCIES
+      # ==========================
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            bc bison build-essential curl flex \
+            git libncurses5-dev libssl-dev \
+            libelf-dev python3 zip
 
+      # ==========================
+      # CLONE KERNEL SOURCE (A14)
+      # ==========================
+      - name: Clone Kernel Source
+        run: |
+          git clone --depth=1 \
+            -b android-msm-redbull-4.19-android14 \
+            https://android.googlesource.com/kernel/msm \
+            kernel
+
+      # ==========================
+      # INJECT KERNELSU
+      # ==========================
+      - name: Inject KernelSU
+        run: |
           cd kernel
+          curl -LSs https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh | bash -
 
-          # Use official build script
-          BUILD_CONFIG=common/build.config.gki.aarch64 \
-          build/build.sh
+      # ==========================
+      # ENABLE KSU + SUSFS
+      # ==========================
+      - name: Enable KSU Config
+        run
