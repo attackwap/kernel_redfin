@@ -1,0 +1,24 @@
+      - name: Setup Clang (Working Version)
+        run: |
+          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
+
+      - name: Build Kernel (Stable Method)
+        run: |
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export KBUILD_BUILD_USER=github
+          export KBUILD_BUILD_HOST=actions
+          export PATH=$(pwd)/clang/bin:$PATH
+
+          cd kernel
+
+          make O=out redbull_defconfig
+
+          make -j$(nproc) O=out \
+            CC=clang \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip
