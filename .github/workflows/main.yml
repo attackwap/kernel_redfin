@@ -54,31 +54,32 @@ jobs:
           echo "CONFIG_LTO_NONE=y" >> arch/arm64/configs/redbull_defconfig
           echo "CONFIG_DEBUG_INFO=n" >> arch/arm64/configs/redbull_defconfig
 
-      - name: Setup Proton Clang (Compatible)
+      - name: Setup AOSP Clang r416183b
         run: |
-         git clone --depth=1 -b 2022-03 https://github.com/kdrag0n/proton-clang.git clang
-
+         git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 clang
+         cd clang
+         git checkout clang-r416183b
       - name: Build Kernel
         run: |
-          export ARCH=arm64
-          export SUBARCH=arm64
-          export KBUILD_BUILD_USER=github
-          export KBUILD_BUILD_HOST=actions
-          export PATH=$(pwd)/clang/bin:$PATH
+         export ARCH=arm64
+         export SUBARCH=arm64
+         export PATH=$(pwd)/clang/clang-r416183b/bin:$PATH
 
-          cd kernel
-          make O=out redbull_defconfig
+         cd kernel
 
-          make -j$(nproc) O=out \
-          CC=clang \
-          LD=ld.lld \
-          LLVM=1 \
-          LLVM_IAS=1 \
-          AR=llvm-ar \
-          NM=llvm-nm \
-          OBJCOPY=llvm-objcopy \
-          OBJDUMP=llvm-objdump \
-          STRIP=llvm-strip
+         make O=out redbull_defconfig
+
+         make -j$(nproc) O=out \
+         CC=clang \
+         LD=ld.lld \
+         LLVM=1 \
+         LLVM_IAS=1 \
+         AR=llvm-ar \
+         NM=llvm-nm \
+         OBJCOPY=llvm-objcopy \
+         OBJDUMP=llvm-objdump \
+         STRIP=llvm-strip
+
   
       - name: Package Kernel
         run: |
