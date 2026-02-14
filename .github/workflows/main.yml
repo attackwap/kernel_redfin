@@ -54,9 +54,9 @@ jobs:
           echo "CONFIG_LTO_NONE=y" >> arch/arm64/configs/redbull_defconfig
           echo "CONFIG_DEBUG_INFO=n" >> arch/arm64/configs/redbull_defconfig
 
-      - name: Setup Proton Clang
+      - name: Setup Proton Clang (Compatible)
         run: |
-          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
+         git clone --depth=1 -b 2022-03 https://github.com/kdrag0n/proton-clang.git clang
 
       - name: Build Kernel
         run: |
@@ -70,14 +70,16 @@ jobs:
           make O=out redbull_defconfig
 
           make -j$(nproc) O=out \
-            CC=clang \
-            LD=ld.lld \
-            AR=llvm-ar \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip
-
+          CC=clang \
+          LD=ld.lld \
+          LLVM=1 \
+          LLVM_IAS=1 \
+          AR=llvm-ar \
+          NM=llvm-nm \
+          OBJCOPY=llvm-objcopy \
+          OBJDUMP=llvm-objdump \
+          STRIP=llvm-strip
+  
       - name: Package Kernel
         run: |
           cd kernel/out/arch/arm64/boot
