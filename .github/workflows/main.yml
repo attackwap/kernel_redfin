@@ -54,16 +54,16 @@ jobs:
           echo "CONFIG_LTO_NONE=y" >> arch/arm64/configs/redbull_defconfig
           echo "CONFIG_DEBUG_INFO=n" >> arch/arm64/configs/redbull_defconfig
 
-      - name: Setup AOSP Clang r416183b
+      - name: Setup AOSP Clang
         run: |
-         git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 clang
-         cd clang
-         git checkout clang-r416183b
+         git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 clang
+         ls clang
+
       - name: Build Kernel
         run: |
          export ARCH=arm64
          export SUBARCH=arm64
-         export PATH=$(pwd)/clang/clang-r416183b/bin:$PATH
+         export PATH=$(pwd)/clang/clang-r450784d/bin:$PATH
 
          cd kernel
 
@@ -79,6 +79,7 @@ jobs:
          OBJCOPY=llvm-objcopy \
          OBJDUMP=llvm-objdump \
          STRIP=llvm-strip
+
 
   
       - name: Package Kernel
