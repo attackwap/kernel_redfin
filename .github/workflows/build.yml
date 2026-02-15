@@ -1,4 +1,4 @@
-name: Pixel 8a A14 KernelSU + SUSFS
+name: Pixel 8a A14 GKI 6.1 KernelSU + SUSFS (Official)
 
 on:
   workflow_dispatch:
@@ -12,31 +12,40 @@ jobs:
       # ==========================
       # CLEAN
       # ==========================
-      - name: Clean Workspace
+      - name: Clean
         run: |
           rm -rf *
           df -h
 
       # ==========================
-      # INSTALL DEPENDENCIES
+      # DEPENDENCIES
       # ==========================
-      - name: Install dependencies
+      - name: Install deps
         run: |
           sudo apt update
           sudo apt install -y \
             git curl wget unzip zip \
-            bc bison build-essential flex \
-            libssl-dev libelf-dev python3 cpio
+            bc bison flex build-essential \
+            libssl-dev libelf-dev python3 rsync
 
       # ==========================
-      # CLONE KERNEL SOURCE (6.1 AKITA)
+      # CLONE KERNEL COMMON 6.1
       # ==========================
-      - name: Clone Kernel Source
+      - name: Clone Kernel
         run: |
           git clone --depth=1 \
             -b android14-6.1 \
             https://android.googlesource.com/kernel/common \
             kernel
+
+      # ==========================
+      # CLONE BUILD SYSTEM (OFFICIAL)
+      # ==========================
+      - name: Clone Build System
+        run: |
+          cd kernel
+          git clone --depth=1 \
+            https://android.googlesource.com/kernel/build
 
       # ==========================
       # INJECT KERNELSU
@@ -47,7 +56,7 @@ jobs:
           curl -LSs https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh | bash -
 
       # ==========================
-      # ENABLE KSU + SUSFS
+      # ENABLE KSU + SUSFS (GKI WAY)
       # ==========================
       - name: Enable Config
         run: |
@@ -57,82 +66,27 @@ jobs:
           echo "CONFIG_KSU_SUSFS_SPOOF=y" >> arch/arm64/configs/gki_defconfig
 
       # ==========================
-      # PROTON CLANG (STABLE)
+      # BUILD OFFICIAL GKI
       # ==========================
-      - name: Setup Proton Clang
+      - name: Build GKI Official
         run: |
-          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
-
-      # ==========================
-      # BUILD KERNEL
-      # ==========================
-      - name: Build Kernel
-        run: |
-          export ARCH=arm64
-          export SUBARCH=arm64
-          export PATH=$(pwd)/clang/bin:$PATH
-
           cd kernel
-
-          make O=out gki_defconfig
-
-          make -j$(nproc) O=out \
-            CC=clang \
-            LD=ld.lld \
-            AR=llvm-ar \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip
+          BUILD_CONFIG=common/build.config.gki.aarch64 \
+          build/build.sh
 
       # ==========================
-      # DOWNLOAD FACTORY IMAGE
+      # PACKAGE OUTPUT
       # ==========================
-      - name: Download Factory Image
+      - name: Zip Output
         run: |
-          wget -O factory.zip \
-          https://dl.google.com/dl/android/aosp/akita-bp4a.260205.001-factory-661cb49b.zip
-
-          unzip factory.zip
-          cd akita-bp4a.260205.001
-          unzip image-akita-bp4a.260205.001.zip
-          mv boot.img ../../boot.img
+          cd kernel/out/android14-6.1/dist
+          zip -r ../../../../Pixel8a-GKI-KSU-SUSFS.zip *
 
       # ==========================
-      # REPACK BOOT WITH NEW KERNEL
-      # ==========================
-      - name: Repack Boot
-        run: |
-          git clone https://github.com/osm0sis/mkbootimg.git
-          cd mkbootimg
-
-          python3 mkbootimg.py \
-            --kernel ../kernel/out/arch/arm64/boot/Image \
-            --ramdisk ../boot.img \
-            --output ../new-boot.img \
-            --header_version 4
-
-      # ==========================
-      # MAKE FLASHABLE ZIP
-      # ==========================
-      - name: Make Flashable Zip
-        run: |
-          mkdir -p AnyKernel3
-          cd AnyKernel3
-
-          wget https://raw.githubusercontent.com/osm0sis/AnyKernel3/master/anykernel.sh
-          wget https://raw.githubusercontent.com/osm0sis/AnyKernel3/master/META-INF/com/google/android/update-binary -P META-INF/com/google/android
-          wget https://raw.githubusercontent.com/osm0sis/AnyKernel3/master/META-INF/com/google/android/updater-script -P META-INF/com/google/android
-
-          cp ../new-boot.img boot.img
-
-          zip -r ../Pixel8a-A14-KSU-SUSFS.zip *
-
-      # ==========================
-      # UPLOAD ARTIFACT
+      # UPLOAD
       # ==========================
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Pixel8a-A14-KSU-SUSFS
-          path: Pixel8a-A14-KSU-SUSFS.zip
+          name: Pixel8a-GKI-KSU-SUSFS
+          path: Pixel8a-GKI-KSU-SUSFS.zip
