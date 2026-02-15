@@ -25,16 +25,20 @@ jobs:
             curl zip python3 unzip cpio \
             device-tree-compiler
 
-      # =====================
-      # DOWNLOAD FACTORY IMAGE
-      # =====================
-      - name: Download Factory Image
-        run: |
-          wget https://dl.google.com/dl/android/aosp/akita-bp4a.260205.001-factory.zip
-          unzip akita-bp4a.260205.001-factory.zip
-          cd akita-bp4a.260205.001
-          unzip image-akita-bp4a.260205.001.zip
-          mv boot.img ../../boot.img
+        # =====================
+        # DOWNLOAD FACTORY IMAGE
+        # =====================
+        
+     - name: Download Factory Image
+       run: |
+         wget -O factory.zip \
+         https://dl.google.com/dl/android/aosp/akita-bp4a.260205.001-factory-661cb49b.zip
+
+         unzip factory.zip
+         cd akita-bp4a.260205.001
+         unzip image-akita-bp4a.260205.001.zip
+         mv boot.img ../../boot.img
+
 
       # =====================
       # CLONE GKI 6.1 A14
