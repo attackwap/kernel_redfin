@@ -44,7 +44,6 @@ jobs:
       # ==========================
       - name: Download Magisk Alpha
         run: |
-          # Get latest release download URL automatically
           MAGISK_URL=$(curl -s https://api.github.com/repos/vvb2060/Magisk/releases/latest \
             | grep browser_download_url \
             | grep ".apk" \
@@ -53,8 +52,10 @@ jobs:
           echo "Downloading $MAGISK_URL"
           wget -O magisk.apk "$MAGISK_URL"
 
-          unzip magisk.apk lib/arm64-v8a/libmagiskboot.so -d magisk
-          mv magisk/lib/arm64-v8a/libmagiskboot.so magiskboot
+          # Extract x86_64 magiskboot (NOT arm64)
+          unzip magisk.apk lib/x86_64/libmagiskboot.so -d magisk
+
+          mv magisk/lib/x86_64/libmagiskboot.so magiskboot
           chmod +x magiskboot
 
       # ==========================
