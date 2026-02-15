@@ -21,23 +21,40 @@ jobs:
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /opt/ghc
           sudo rm -rf /opt/hostedtoolcache
+          sudo apt clean
           df -h
 
+      # ==========================
+      # INSTALL TOOLS
+      # ==========================
       - name: Install tools
         run: |
           sudo apt update
-          sudo apt install -y wget unzip zip python3 cpio
+          sudo apt install -y wget unzip zip curl python3 cpio
 
       # ==========================
-      # DOWNLOAD FACTORY
+      # DOWNLOAD FACTORY IMAGE
       # ==========================
       - name: Download Factory
         run: |
           wget -O factory.zip "${{ github.event.inputs.factory_url }}"
+
           unzip factory.zip
           cd akita-*
+
           unzip image-*.zip
-          mv boot.img ../../boot.img
+          cd image-*
+
+          ls -lh
+
+          mv init_boot.img ../../../init_boot.img
+
+      # ==========================
+      # VERIFY INIT_BOOT EXISTS
+      # ==========================
+      - name: Verify init_boot
+        run: |
+          ls -lh init_boot.img
 
       # ==========================
       # DOWNLOAD MAGISK ALPHA
@@ -52,25 +69,31 @@ jobs:
           echo "Downloading $MAGISK_URL"
           wget -O magisk.apk "$MAGISK_URL"
 
-          # Extract x86_64 magiskboot (NOT arm64)
+          # Extract x86_64 magiskboot for runner
           unzip magisk.apk lib/x86_64/libmagiskboot.so -d magisk
-
           mv magisk/lib/x86_64/libmagiskboot.so magiskboot
           chmod +x magiskboot
 
       # ==========================
-      # PATCH BOOT
+      # PATCH INIT_BOOT
       # ==========================
-      - name: Patch Boot
+      - name: Patch init_boot
         run: |
-          ./magiskboot unpack boot.img
-          ./magiskboot repack boot.img
+          ./magiskboot unpack init_boot.img
+          ./magiskboot repack init_boot.img
           mv new-boot.img magisk_patched.img
+
+      # ==========================
+      # VERIFY OUTPUT
+      # ==========================
+      - name: Verify Patched Image
+        run: |
+          ls -lh magisk_patched.img
 
       # ==========================
       # UPLOAD ARTIFACT
       # ==========================
-      - name: Upload
+      - name: Upload Patched Image
         uses: actions/upload-artifact@v4
         with:
           name: Pixel8a-MagiskAlpha-Patched
