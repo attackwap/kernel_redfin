@@ -35,27 +35,34 @@ jobs:
       # ==========================
       # DOWNLOAD FACTORY IMAGE
       # ==========================
-      - name: Download Factory
+      - name: Download Factory (Debug Mode)
         run: |
           wget -O factory.zip "${{ github.event.inputs.factory_url }}"
 
+          echo "==== Extracting factory.zip ===="
           unzip factory.zip
 
-          FACTORY_DIR=$(ls -d akita-*)
-          cd "$FACTORY_DIR"
-
-          IMAGE_ZIP=$(ls image-*.zip)
-          unzip "$IMAGE_ZIP"
-
+          echo "==== Listing root ===="
           ls -lh
 
-          # Cari init_boot.img di folder manapun
-          INIT_BOOT=$(find . -name "init_boot.img" | head -n 1)
+          FACTORY_DIR=$(ls -d akita-*)
+          echo "Factory dir: $FACTORY_DIR"
 
-          echo "Found init_boot at: $INIT_BOOT"
+          cd "$FACTORY_DIR"
 
-          mv "$INIT_BOOT" ../../init_boot.img
+          echo "==== Listing inside factory dir ===="
+          ls -lh
 
+          IMAGE_ZIP=$(ls image-*.zip)
+          echo "Image zip: $IMAGE_ZIP"
+
+          unzip "$IMAGE_ZIP"
+
+          echo "==== After extracting image zip ===="
+          ls -lh
+
+          echo "==== Searching for init_boot.img ===="
+          find . -iname "*boot*.img"
       # ==========================
       # VERIFY INIT_BOOT EXISTS
       # ==========================
