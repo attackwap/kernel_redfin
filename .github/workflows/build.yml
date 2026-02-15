@@ -41,23 +41,20 @@ jobs:
 
           unzip factory.zip
 
-          # Masuk folder akita-xxxx
           FACTORY_DIR=$(ls -d akita-*)
           cd "$FACTORY_DIR"
 
-          # Ambil nama image zip dengan aman
           IMAGE_ZIP=$(ls image-*.zip)
-          echo "Found image zip: $IMAGE_ZIP"
-
           unzip "$IMAGE_ZIP"
-
-          # Masuk folder hasil unzip (bukan file zip)
-          IMAGE_DIR=$(basename "$IMAGE_ZIP" .zip)
-          cd "$IMAGE_DIR"
 
           ls -lh
 
-          mv init_boot.img ../../../init_boot.img
+          # Cari init_boot.img di folder manapun
+          INIT_BOOT=$(find . -name "init_boot.img" | head -n 1)
+
+          echo "Found init_boot at: $INIT_BOOT"
+
+          mv "$INIT_BOOT" ../../init_boot.img
 
       # ==========================
       # VERIFY INIT_BOOT EXISTS
