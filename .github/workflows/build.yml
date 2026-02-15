@@ -1,24 +1,137 @@
-      - name: Setup Clang (Working Version)
-        run: |
-          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang
+name: Pixel8a BP4A KernelSU + SUSFS
 
-      - name: Build Kernel (Stable Method)
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache
+          sudo apt clean
+
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            bc bison build-essential flex \
+            git libssl-dev libelf-dev \
+            curl zip python3 unzip cpio \
+            device-tree-compiler
+
+      # =====================
+      # DOWNLOAD FACTORY IMAGE
+      # =====================
+      - name: Download Factory Image
+        run: |
+          wget https://dl.google.com/dl/android/aosp/akita-bp4a.260205.001-factory.zip
+          unzip akita-bp4a.260205.001-factory.zip
+          cd akita-bp4a.260205.001
+          unzip image-akita-bp4a.260205.001.zip
+          mv boot.img ../../boot.img
+
+      # =====================
+      # CLONE GKI 6.1 A14
+      # =====================
+      - name: Clone Kernel
+        run: |
+          git clone --depth=1 \
+            -b android14-6.1 \
+            https://android.googlesource.com/kernel/common \
+            kernel
+
+      # =====================
+      # INJECT KERNELSU
+      # =====================
+      - name: Inject KernelSU
+        run: |
+          cd kernel
+          curl -LSs https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh | bash -
+
+      # =====================
+      # INJECT SUSFS
+      # =====================
+      - name: Inject SUSFS
+        run: |
+          cd kernel
+          git clone --depth=1 https://github.com/sidex15/susfs.git
+          cp -r susfs/* .
+          rm -rf susfs
+
+          echo "CONFIG_KSU=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SPOOF=y" >> arch/arm64/configs/gki_defconfig
+
+      # =====================
+      # CLONE AOSP CLANG
+      # =====================
+      - name: Setup Clang
+        run: |
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 clang
+
+      # =====================
+      # BUILD KERNEL
+      # =====================
+      - name: Build Kernel
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
-          export KBUILD_BUILD_USER=github
-          export KBUILD_BUILD_HOST=actions
-          export PATH=$(pwd)/clang/bin:$PATH
+          export PATH=$(pwd)/clang/clang-r487747/bin:$PATH
 
           cd kernel
+          make gki_defconfig
 
-          make O=out redbull_defconfig
-
-          make -j$(nproc) O=out \
+          make -j$(nproc) \
             CC=clang \
             LD=ld.lld \
-            AR=llvm-ar \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip
+            LLVM=1 \
+            LLVM_IAS=1
+
+      # =====================
+      # GET MKBOOTIMG TOOLS
+      # =====================
+      - name: Get Boot Tools
+        run: |
+          git clone --depth=1 https://android.googlesource.com/platform/system/tools/mkbootimg
+
+      # =====================
+      # REPACK BOOT
+      # =====================
+      - name: Repack Boot
+        run: |
+          mkdir bootwork
+          cd bootwork
+          cp ../boot.img .
+
+          python3 ../mkbootimg/unpack_bootimg.py --boot_img boot.img --out .
+
+          cp ../kernel/arch/arm64/boot/Image kernel
+
+          python3 ../mkbootimg/mkbootimg.py \
+            --kernel kernel \
+            --ramdisk ramdisk \
+            --header_version 4 \
+            --output new_boot.img
+
+      # =====================
+      # CREATE FLASHABLE ZIP
+      # =====================
+      - name: Create Flashable ZIP
+        run: |
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git
+          cp bootwork/new_boot.img AnyKernel3/
+
+          cd AnyKernel3
+          zip -r9 ../Pixel8a-BP4A-KSU-SUSFS.zip *
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pixel8a-BP4A-KSU-SUSFS
+          path: Pixel8a-BP4A-KSU-SUSFS.zip
