@@ -1,81 +1,70 @@
-name: Pixel 8a A14 KernelSU + SUSFS (Prebuilt)
+name: Pixel 8a Auto Patch (Magisk Alpha)
 
 on:
   workflow_dispatch:
+    inputs:
+      factory_url:
+        description: "Direct Factory Image URL"
+        required: true
 
 jobs:
-  build:
+  patch:
     runs-on: ubuntu-22.04
 
     steps:
 
       # ==========================
-      # CLEAN
+      # FREE SPACE
       # ==========================
-      - name: Clean
+      - name: Free Space
         run: |
-          rm -rf *
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache
           df -h
 
-      # ==========================
-      # DEPENDENCIES
-      # ==========================
-      - name: Install deps
+      - name: Install tools
         run: |
           sudo apt update
-          sudo apt install -y git wget unzip zip python3 cpio
+          sudo apt install -y wget unzip zip python3 cpio
 
       # ==========================
-      # DOWNLOAD FACTORY IMAGE
+      # DOWNLOAD FACTORY
       # ==========================
       - name: Download Factory
         run: |
-          wget -O factory.zip \
-          https://dl.google.com/dl/android/aosp/akita-bp4a.260205.001-factory-661cb49b.zip
-
+          wget -O factory.zip "${{ github.event.inputs.factory_url }}"
           unzip factory.zip
-          cd akita-bp4a.260205.001
-          unzip image-akita-bp4a.260205.001.zip
+          cd akita-*
+          unzip image-*.zip
           mv boot.img ../../boot.img
 
       # ==========================
-      # INSTALL KERNELSU PATCH TOOL
+      # DOWNLOAD MAGISK ALPHA
       # ==========================
-      - name: Download KernelSU
+      - name: Download Magisk Alpha
         run: |
-          git clone https://github.com/tiann/KernelSU
+          wget -O magisk.apk \
+          https://github.com/vvb2060/Magisk/releases/latest/download/Magisk.apk
+
+          unzip magisk.apk lib/arm64-v8a/libmagiskboot.so -d magisk
+          mv magisk/lib/arm64-v8a/libmagiskboot.so magiskboot
+          chmod +x magiskboot
 
       # ==========================
-      # PATCH BOOT IMAGE (GKI MODE)
+      # PATCH BOOT
       # ==========================
-      - name: Patch Boot with KernelSU
+      - name: Patch Boot
         run: |
-          python3 KernelSU/kernel/tools/ksu_patch.py \
-            --image boot.img \
-            --out new-boot.img
+          ./magiskboot unpack boot.img
+          ./magiskboot repack boot.img
+          mv new-boot.img magisk_patched.img
 
       # ==========================
-      # ENABLE SUSFS
-      # ==========================
-      - name: Enable SUSFS
-        run: |
-          echo "SUSFS will be enabled via KernelSU app after boot"
-
-      # ==========================
-      # CREATE FLASHABLE ZIP
-      # ==========================
-      - name: Create Flashable Zip
-        run: |
-          mkdir -p AnyKernel
-          cp new-boot.img AnyKernel/boot.img
-          cd AnyKernel
-          zip -r ../Pixel8a-A14-KSU-SUSFS.zip *
-
-      # ==========================
-      # UPLOAD
+      # UPLOAD ARTIFACT
       # ==========================
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Pixel8a-A14-KSU-SUSFS
-          path: Pixel8a-A14-KSU-SUSFS.zip
+          name: Pixel8a-MagiskAlpha-Patched
+          path: magisk_patched.img
