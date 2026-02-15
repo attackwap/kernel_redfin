@@ -40,10 +40,20 @@ jobs:
           wget -O factory.zip "${{ github.event.inputs.factory_url }}"
 
           unzip factory.zip
-          cd akita-*
 
-          unzip image-*.zip
-          cd image-*
+          # Masuk folder akita-xxxx
+          FACTORY_DIR=$(ls -d akita-*)
+          cd "$FACTORY_DIR"
+
+          # Ambil nama image zip dengan aman
+          IMAGE_ZIP=$(ls image-*.zip)
+          echo "Found image zip: $IMAGE_ZIP"
+
+          unzip "$IMAGE_ZIP"
+
+          # Masuk folder hasil unzip (bukan file zip)
+          IMAGE_DIR=$(basename "$IMAGE_ZIP" .zip)
+          cd "$IMAGE_DIR"
 
           ls -lh
 
