@@ -1,4 +1,4 @@
-name: Pixel 8a A14 GKI 6.1 KernelSU + SUSFS (Official)
+name: Pixel 8a A14 KernelSU + SUSFS (Prebuilt)
 
 on:
   workflow_dispatch:
@@ -23,64 +23,53 @@ jobs:
       - name: Install deps
         run: |
           sudo apt update
-          sudo apt install -y \
-            git curl wget unzip zip \
-            bc bison flex build-essential \
-            libssl-dev libelf-dev python3 rsync
+          sudo apt install -y git wget unzip zip python3 cpio
 
       # ==========================
-      # CLONE KERNEL COMMON 6.1
+      # DOWNLOAD FACTORY IMAGE
       # ==========================
-      - name: Clone Kernel
+      - name: Download Factory
         run: |
-          git clone --depth=1 \
-            -b android14-6.1 \
-            https://android.googlesource.com/kernel/common \
-            kernel
+          wget -O factory.zip \
+          https://dl.google.com/dl/android/aosp/akita-bp4a.260205.001-factory-661cb49b.zip
+
+          unzip factory.zip
+          cd akita-bp4a.260205.001
+          unzip image-akita-bp4a.260205.001.zip
+          mv boot.img ../../boot.img
 
       # ==========================
-      # CLONE BUILD SYSTEM (OFFICIAL)
+      # INSTALL KERNELSU PATCH TOOL
       # ==========================
-      - name: Clone Build System
+      - name: Download KernelSU
         run: |
-          cd kernel
-          git clone --depth=1 \
-            https://android.googlesource.com/kernel/build
+          git clone https://github.com/tiann/KernelSU
 
       # ==========================
-      # INJECT KERNELSU
+      # PATCH BOOT IMAGE (GKI MODE)
       # ==========================
-      - name: Inject KernelSU
+      - name: Patch Boot with KernelSU
         run: |
-          cd kernel
-          curl -LSs https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh | bash -
+          python3 KernelSU/kernel/tools/ksu_patch.py \
+            --image boot.img \
+            --out new-boot.img
 
       # ==========================
-      # ENABLE KSU + SUSFS (GKI WAY)
+      # ENABLE SUSFS
       # ==========================
-      - name: Enable Config
+      - name: Enable SUSFS
         run: |
-          cd kernel
-          echo "CONFIG_KSU=y" >> arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS=y" >> arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SPOOF=y" >> arch/arm64/configs/gki_defconfig
+          echo "SUSFS will be enabled via KernelSU app after boot"
 
       # ==========================
-      # BUILD OFFICIAL GKI
+      # CREATE FLASHABLE ZIP
       # ==========================
-      - name: Build GKI Official
+      - name: Create Flashable Zip
         run: |
-          cd kernel
-          BUILD_CONFIG=common/build.config.gki.aarch64 \
-          build/build.sh
-
-      # ==========================
-      # PACKAGE OUTPUT
-      # ==========================
-      - name: Zip Output
-        run: |
-          cd kernel/out/android14-6.1/dist
-          zip -r ../../../../Pixel8a-GKI-KSU-SUSFS.zip *
+          mkdir -p AnyKernel
+          cp new-boot.img AnyKernel/boot.img
+          cd AnyKernel
+          zip -r ../Pixel8a-A14-KSU-SUSFS.zip *
 
       # ==========================
       # UPLOAD
@@ -88,5 +77,5 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Pixel8a-GKI-KSU-SUSFS
-          path: Pixel8a-GKI-KSU-SUSFS.zip
+          name: Pixel8a-A14-KSU-SUSFS
+          path: Pixel8a-A14-KSU-SUSFS.zip
